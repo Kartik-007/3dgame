@@ -1,0 +1,47 @@
+---
+description: This is useful when creating code to make sure the code follows these standards and we have clean and simple code 
+globs: 
+alwaysApply: false
+---
+# Code Standards for Treasure Hunter Game
+
+## General Guidelines
+- Keep files under 400 lines of code to maintain readability
+- Use meaningful variable and function names
+- Add comments for complex logic, but keep them concise
+- Follow consistent indentation (2 spaces)
+- Use TypeScript for type safety
+
+## Modularity Guidelines
+- Separate concerns: rendering, game logic, input handling, etc.
+- Create reusable components and utility functions
+- Follow the Entity-Component System pattern where appropriate
+- Use composition over inheritance
+- Keep class and function responsibilities focused and specific
+
+## Performance Guidelines
+- Minimize object creation during gameplay loops
+- Use object pooling for frequently created/destroyed objects
+- Optimize Three.js usage (reuse geometries and materials)
+- Implement level-of-detail techniques for distant objects
+- Keep physics calculations simple and optimized
+
+## Asset Guidelines
+- Use low-poly models (under 1000 polygons per object when possible)
+- Keep textures small (maximum 1024x1024, prefer 512x512 or smaller)
+- Use texture atlases where possible
+- Compress audio files appropriately
+- Implement progressive loading where needed
+
+## Mobile-Specific Guidelines
+- Ensure UI elements are appropriately sized for touch
+- Implement mobile-friendly controls
+- Test on various screen sizes
+- Optimize for touch input latency
+
+## Testing
+- Test frequently on both mobile and desktop
+- Validate performance early and often
+- Check memory usage periodically
+
+These standards aim to ensure the game is developed efficiently within the 3-day timeframe while maintaining quality and performance. 

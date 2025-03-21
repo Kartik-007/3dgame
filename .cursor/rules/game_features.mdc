@@ -1,0 +1,73 @@
+---
+description: This file has the set of game features I'd like to implement from most important to nice to haves. We should focus on having the must haves first. 
+globs: 
+alwaysApply: false
+---
+# Treasure Hunter - Game Features and Scope
+
+## Core Features (Must Have)
+These features are essential to the game and must be implemented:
+
+- **Player Movement**: Third-person character movement with keyboard/touch controls
+- **Procedural Level Generation**: Simple dungeon layout generation with rooms and corridors
+- **Item Collection**: Ability to pick up items in the environment
+- **Inventory System**: Store and manage collected items
+- **Extraction Mechanic**: Exit points to safely extract with found items
+- **Basic Enemies**: Simple AI opponents that challenge the player
+- **Item Rarity System**: Different tiers of items with varying power/value
+- **Combat System**: Basic attack mechanics to defeat enemies
+- **Persistence**: Save inventory between game sessions (localStorage)
+- **Mobile Support**: Touch controls and responsive UI
+- **Minimal Loading**: Fast initial load with progressive asset loading
+
+## Secondary Features (Should Have)
+These features enhance the game but could be simplified if time is short:
+
+- **Special Item Effects**: Items with unique properties or abilities
+- **Multiple Enemy Types**: 2-3 different enemy types with varied behaviors
+- **Visual Feedback**: Particle effects for actions (hits, pickups, etc.)
+- **Audio**: Background music and sound effects
+- **Mini-map**: Simple map showing room layout and player position
+- **Tutorial**: Basic instruction for new players
+- **Health System**: Player health with healing items
+- **Environmental Hazards**: Simple traps or obstacles
+
+## Polish Features (Nice to Have)
+These features add polish but should only be implemented if core features are complete:
+
+- **Advanced Lighting**: Dynamic lighting effects
+- **Rich UI**: Animated and polished user interface
+- **Character Customization**: Simple appearance options
+- **Achievements**: In-game achievements or challenges
+- **Difficulty Scaling**: Increasing challenge based on player progression
+- **Environmental Variety**: Different visual themes for levels
+- **Advanced Animation**: More refined character and enemy animations
+- **Particle Effects**: Enhanced visual effects
+- **Statistics Tracking**: Player stats (runs completed, items found, etc.)
+
+## Out of Scope (Do Not Implement)
+These features are explicitly excluded to maintain focus and timeline:
+
+- **Multiplayer**: No multiplayer functionality
+- **Complex Physics**: No realistic physics simulation
+- **Extensive Story**: No complex narrative elements
+- **High-Detail Graphics**: No high-poly models or complex shaders
+- **Character Progression**: No leveling system or skill trees
+- **Complex Enemy AI**: No sophisticated enemy behaviors
+- **Crafting System**: No item crafting or combining
+- **Third-Party Services**: No external APIs or services
+- **Social Features**: No sharing or social integration
+
+## Minimum Viable Product Definition
+The absolute minimum product that meets the competition requirements:
+
+1. Player can navigate through a procedurally generated dungeon
+2. Player can collect items of varying rarity
+3. Player can encounter and defeat simple enemies
+4. Player can choose to extract with found items
+5. Successful extraction saves items to persistent inventory
+6. Death results in losing all newly found items
+7. Game runs smoothly on both mobile and desktop
+8. Game loads quickly with no explicit loading screens
+
+This document should be referenced regularly to avoid scope creep and ensure focus on delivering a complete, playable game within the 3-day timeframe. 

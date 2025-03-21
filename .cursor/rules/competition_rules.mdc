@@ -1,0 +1,31 @@
+---
+description: This is the set of rules that our application must meet as this is the competition we are entering. 
+globs: 
+alwaysApply: false
+---
+# Vibe Jam 2025 Competition Rules
+
+## Deadline
+- March 25, 2025
+
+## Required Rules
+- At least 80% of code must be written by AI
+- Game must be accessible on the web without any login or signup
+- Game must be free-to-play (preferably with its own domain or subdomain)
+- Single-player is fine, multiplayer is appreciated but not required
+- Can use any engine (ThreeJS recommended)
+- NO loading screens or heavy downloads
+- Game must load almost instantly (except maybe asking for username)
+
+## Required Code
+The following code must be included to show participation:
+```html
+<a target="_blank" href="https://jam.pieter.com" style="font-family: 'system-ui', sans-serif; position: fixed; bottom: -1px; right: -1px; padding: 7px; font-size: 14px; font-weight: bold; background: #fff; color: #000; text-decoration: none; z-index: 10; border-top-left-radius: 12px; z-index: 10000; border: 1px solid #fff;">🕹️ Vibe Jam 2025</a>
+```
+
+## Our Game Concept: "Treasure Hunter"
+- An extraction-based game where players enter procedurally generated dungeons
+- Players collect valuable items while navigating through the environment
+- Risk vs. reward: Better items help in future runs but can be lost if player dies
+- Simple but engaging core loop: Enter → Collect → Extract safely (or die trying)
+- Quick to play, easy to understand, challenging to master 
