@@ -82,7 +82,7 @@ export class CollisionManager {
                 drone.forceDestroy();
               } else {
                 // Otherwise just apply damage normally
-                drone.damage(damage);
+                drone.takeDamage(damage);
               }
               
               // Break out of inner loop since this projectile has hit something

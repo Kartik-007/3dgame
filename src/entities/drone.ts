@@ -124,7 +124,11 @@ export abstract class Drone extends Entity {
     
     // Simplified collision check using distance
     const distance = this.position.distanceTo(basePosition);
+    console.log(`Drone distance to base: ${distance}, Need: ${baseSize + 1}`);
+    
     if (distance < baseSize + 1) { // Add 1 for drone size
+      console.log(`DRONE HIT BASE! Damage amount: ${this.damage}`);
+      
       // Damage the base
       this.attackBase();
       
@@ -141,7 +145,9 @@ export abstract class Drone extends Entity {
    */
   protected attackBase(): void {
     if (this.targetBase) {
-      this.targetBase.damage(this.damage);
+      console.log(`Attacking base with damage: ${this.damage}`);
+      const result = this.targetBase.damage(this.damage);
+      console.log(`Base health after attack: ${this.targetBase.getHealth()}, attack result: ${result}`);
     }
   }
   
@@ -187,7 +193,7 @@ export abstract class Drone extends Entity {
    * Damage the drone
    * Returns true if the drone is still alive, false if it's destroyed
    */
-  damage(amount: number): boolean {
+  takeDamage(amount: number): boolean {
     // If the drone is already destroyed or inactive, ignore further damage
     if (this.health <= 0 || !this.isActive) {
       return false;

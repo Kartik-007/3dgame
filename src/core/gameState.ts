@@ -128,4 +128,17 @@ export class GameState {
   getBaseHealthPercent(): number {
     return (this.baseHealth / this.maxBaseHealth) * 100;
   }
+
+  /**
+   * Set the current base health
+   * Also handles game over state if health reaches zero
+   */
+  setBaseHealth(health: number): void {
+    this.baseHealth = Math.max(0, health);
+    
+    // Check if base is destroyed
+    if (this.baseHealth <= 0 && this.state !== GameStateType.GAME_OVER) {
+      this.setState(GameStateType.GAME_OVER);
+    }
+  }
 } 

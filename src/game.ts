@@ -124,6 +124,15 @@ export class Game {
     this.playerBase.onDestroyed(() => {
       // Disabled audio as requested
       // this.audioManager.play('game_over');
+      console.log("Base destroyed! Setting game state to GAME_OVER");
+      this.gameState.setState(GameStateType.GAME_OVER);
+    });
+    
+    // Register for base health changes
+    this.playerBase.onHealthChange((health, maxHealth) => {
+      console.log(`Base health changed: ${health}/${maxHealth}`);
+      // Update game state base health
+      this.gameState.setBaseHealth(health);
     });
     
     // Setup UI callbacks
