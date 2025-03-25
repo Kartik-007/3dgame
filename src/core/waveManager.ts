@@ -306,8 +306,19 @@ export class WaveManager {
   private getRandomSpawnPosition(): THREE.Vector3 {
     const angle = Math.random() * Math.PI * 2; // Full 360° spawn circle
     const distance = Config.DRONE_SPAWN_DISTANCE;
-    const height = Config.DRONE_SPAWN_HEIGHT_MIN + 
-      (Math.random() * (Config.DRONE_SPAWN_HEIGHT_MAX - Config.DRONE_SPAWN_HEIGHT_MIN));
+    
+    // Calculate height range based on wave number
+    // Starting with the base range, then increasing max height with each wave
+    const minHeight = Config.DRONE_SPAWN_HEIGHT_MIN;
+    const baseMaxHeight = Config.DRONE_SPAWN_HEIGHT_MAX;
+    
+    // Increase max height by 2 units for each wave after wave 1
+    // This creates more vertical variation as waves progress
+    const waveHeightIncrease = Math.max(0, (this.currentWave - 1) * 2);
+    const maxHeight = baseMaxHeight + waveHeightIncrease;
+    
+    // Get random height within the wave-specific range
+    const height = minHeight + (Math.random() * (maxHeight - minHeight));
     
     // Calculate position on circle around the base
     const basePosition = this.targetBase.getPosition();
@@ -428,9 +439,20 @@ export class WaveManager {
     this.isWaveActive = false;
     this.waveTimer = 1; // Short delay before starting first wave
     this.spawnCount = 0;
+    this.spawnTimer = 0;
     
-    // Deactivate all drones
+    // Deactivate all drones and fully reset them
     this.dronePool.forEach(drone => {
+      // Make sure any wave-specific modifications are reset
+      drone.setWaveNumber(1); // Reset to wave 1
+      drone.setPathVariation(0); // Reset path variation
+      
+      // Reset speed to original base value
+      if (drone instanceof BasicDrone) {
+        drone.setSpeed(Config.BASIC_DRONE_SPEED);
+      }
+      
+      // Deactivate drone and remove from scene
       drone.setActive(false);
       const droneMesh = drone.getMesh();
       if (droneMesh && droneMesh.parent) {

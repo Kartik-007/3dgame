@@ -135,20 +135,24 @@ canvas {
 }
 
 .menu-content {
-  background-color: rgba(30, 30, 30, 0.9);
-  padding: 40px;
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 20px;
   border-radius: 10px;
-  text-align: center;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-  max-width: 500px;
+  max-width: 600px;
   width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
-.menu h1 {
-  font-size: 36px;
-  margin-bottom: 30px;
-  color: #4caf50;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+.menu-content h1 {
+  color: #2196f3;
+  margin-bottom: 20px;
+  font-size: 2.5em;
+  text-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
 }
 
 .menu-button {
@@ -367,4 +371,157 @@ canvas {
     width: 250px;
     padding: 15px;
   }
+}
+
+/* Radar/Minimap */
+.radar-container {
+  position: absolute;
+  top: 70px;
+  bottom: auto;
+  right: 70px;
+  left: auto;
+  width: 180px;
+  height: 180px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.radar-background {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(76, 175, 80, 0.7);
+  position: relative;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+.radar-base {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: #4caf50;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+  z-index: 2;
+}
+
+.radar-player-arrow {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(0deg); /* Will be updated dynamically */
+  transform-origin: center;
+  z-index: 3;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.7));
+}
+
+.radar-player-arrow svg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.radar-drone {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: #ff5252;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  transition: left 0.3s ease, top 0.3s ease;
+}
+
+/* Radar sweep animation */
+.radar-background::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, transparent 30%, rgba(76, 175, 80, 0.1) 31%, rgba(76, 175, 80, 0.1) 33%, transparent 34%);
+  animation: radarSweep 4s linear infinite;
+  z-index: 1;
+}
+
+@keyframes radarSweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .radar-container {
+    width: 120px;
+    height: 120px;
+    top: 60px;
+    right: 60px;
+    bottom: auto;
+    left: auto;
+  }
+}
+
+/* Add styles for instructions in the menu */
+.instructions-container {
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+  max-width: 90%;
+  width: 500px;
+  color: #fff;
+  text-align: left;
+}
+
+.instructions-container h2 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #4caf50;
+  font-size: 1.5em;
+}
+
+.instructions-container h3 {
+  color: #2196f3;
+  margin-top: 15px;
+  margin-bottom: 5px;
+  font-size: 1.2em;
+}
+
+.instructions-list ul {
+  list-style-type: none;
+  padding-left: 10px;
+  margin-top: 5px;
+}
+
+.instructions-list li {
+  margin-bottom: 8px;
+  position: relative;
+  padding-left: 20px;
+}
+
+.instructions-list li:before {
+  content: '▶';
+  position: absolute;
+  left: 0;
+  color: #ffeb3b;
+}
+
+.instructions-list p {
+  margin-top: 5px;
+  line-height: 1.4;
 }

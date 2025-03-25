@@ -193,6 +193,13 @@ export class Player {
   }
   
   /**
+   * Get the camera's current direction vector
+   */
+  getCameraDirection(): THREE.Vector3 {
+    return this.cameraDirection.clone();
+  }
+  
+  /**
    * Reset player to initial state
    */
   reset(): void {

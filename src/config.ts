@@ -19,8 +19,8 @@ export class Config {
   static CAMERA_FOV = 75;
   static CAMERA_NEAR = 0.1;
   static CAMERA_FAR = 1000;
-  static CAMERA_INITIAL_POSITION = new THREE.Vector3(0, 10, 15); // Higher position and further back
-  static CAMERA_LOOK_AT = new THREE.Vector3(0, 3, 0); // Looking toward center of the world
+  static CAMERA_INITIAL_POSITION = new THREE.Vector3(0, 15, 0); // Higher above base
+  static CAMERA_LOOK_AT = new THREE.Vector3(0, 0, -15); // Looking forward from base
   
   // Renderer settings
   static RENDERER_CLEAR_COLOR = 0x000000;

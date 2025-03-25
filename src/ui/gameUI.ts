@@ -20,12 +20,18 @@ export class GameUI {
   private inputManager: InputManager | null;
   private sensitivityValue: number;
   private onSensitivityChangeCallbacks: ((value: number) => void)[];
+  private radarElement: HTMLElement | null;
+  private radarPlayerArrow: HTMLElement | null;
+  private radarDroneElements: HTMLElement[];
   
   constructor(container: HTMLElement, gameState: GameState) {
     this.container = container;
     this.inputManager = null;
     this.sensitivityValue = 1.0;
     this.onSensitivityChangeCallbacks = [];
+    this.radarElement = null;
+    this.radarPlayerArrow = null;
+    this.radarDroneElements = [];
     
     // Create UI elements
     this.createUI();
@@ -72,6 +78,9 @@ export class GameUI {
     this.healthBarFillElement = document.createElement('div');
     this.healthBarFillElement.className = 'health-bar-fill';
     this.healthBarElement.appendChild(this.healthBarFillElement);
+    
+    // Create radar/minimap
+    this.createRadar(hudContainer);
     
     // Create crosshair
     this.crosshairElement = document.createElement('div');
@@ -166,6 +175,50 @@ export class GameUI {
     title.textContent = Config.GAME_TITLE;
     menuContent.appendChild(title);
     
+    // Add game instructions
+    const instructionsContainer = document.createElement('div');
+    instructionsContainer.className = 'instructions-container';
+    menuContent.appendChild(instructionsContainer);
+    
+    const instructionsTitle = document.createElement('h2');
+    instructionsTitle.textContent = 'How to Play';
+    instructionsContainer.appendChild(instructionsTitle);
+    
+    const instructionsList = document.createElement('div');
+    instructionsList.className = 'instructions-list';
+    instructionsContainer.appendChild(instructionsList);
+    
+    // Controls section
+    const controlsTitle = document.createElement('h3');
+    controlsTitle.textContent = 'Controls:';
+    instructionsList.appendChild(controlsTitle);
+    
+    const controls = [
+      'WASD - Move around',
+      'Mouse - Aim camera',
+      'Left-click - Shoot',
+      'ESC - Pause game',
+      'Settings gear - Adjust mouse sensitivity'
+    ];
+    
+    const controlsList = document.createElement('ul');
+    controls.forEach(control => {
+      const item = document.createElement('li');
+      item.textContent = control;
+      controlsList.appendChild(item);
+    });
+    instructionsList.appendChild(controlsList);
+    
+    // Game rules section
+    const rulesTitle = document.createElement('h3');
+    rulesTitle.textContent = 'Objective:';
+    instructionsList.appendChild(rulesTitle);
+    
+    const rules = document.createElement('p');
+    rules.textContent = 'Defend your base from waves of enemy drones. The game gets progressively harder with each wave. Watch the radar for incoming threats!';
+    instructionsList.appendChild(rules);
+    
+    // Start button (existing code)
     const startButton = document.createElement('button');
     startButton.textContent = 'Start Game';
     startButton.className = 'menu-button';
@@ -206,9 +259,47 @@ export class GameUI {
   }
   
   /**
-   * Update UI based on game state
+   * Create the radar/minimap UI element
    */
-  updateUI(gameState: GameState): void {
+  private createRadar(container: HTMLElement): void {
+    // Create radar container
+    const radarContainer = document.createElement('div');
+    radarContainer.className = 'radar-container';
+    container.appendChild(radarContainer);
+    
+    // Create radar background (the circular display)
+    const radarBackground = document.createElement('div');
+    radarBackground.className = 'radar-background';
+    radarContainer.appendChild(radarBackground);
+    
+    // Create base indicator (center of the radar)
+    const baseIndicator = document.createElement('div');
+    baseIndicator.className = 'radar-base';
+    radarBackground.appendChild(baseIndicator);
+    
+    // Create player direction arrow using SVG for better shape control
+    const playerArrow = document.createElement('div');
+    playerArrow.className = 'radar-player-arrow';
+    
+    // Create a simple triangle arrow with a clear point indicating direction
+    playerArrow.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8,0 L16,16 Q8,10 0,16 Z" fill="#ffeb3b" />
+      </svg>
+    `;
+    
+    radarBackground.appendChild(playerArrow);
+    
+    // Store references for update
+    this.radarElement = radarBackground;
+    this.radarPlayerArrow = playerArrow;
+    this.radarDroneElements = [];
+  }
+  
+  /**
+   * Update UI elements based on game state
+   */
+  updateUI(gameState: GameState, activeDrones: any[] = [], playerDirection?: THREE.Vector3): void {
     // Update score
     this.scoreElement.textContent = `Score: ${gameState.getScore()}`;
     
@@ -228,6 +319,9 @@ export class GameUI {
       this.healthBarFillElement.style.backgroundColor = '#f44336'; // Red
     }
     
+    // Update radar with drone positions and player direction
+    this.updateRadar(activeDrones, playerDirection);
+    
     // Update final score on game over screen
     if (gameState.isState(GameStateType.GAME_OVER)) {
       const finalScoreElement = document.getElementById('final-score');
@@ -235,6 +329,84 @@ export class GameUI {
         finalScoreElement.textContent = `Final Score: ${gameState.getScore()}`;
       }
     }
+  }
+  
+  /**
+   * Update radar display with drone positions and player direction
+   */
+  private updateRadar(drones: any[], playerDirection?: THREE.Vector3): void {
+    if (!this.radarElement) return;
+    
+    // Update player direction arrow
+    if (playerDirection && this.radarPlayerArrow) {
+      // The player direction vector points where the player is looking
+      // We need to convert this to degrees for CSS rotation
+      // In our coordinate system, negative Z is forward (north)
+      // For the radar, the top of the SVG (0 degrees) should point north
+      const angle = Math.atan2(playerDirection.x, -playerDirection.z) * (180 / Math.PI);
+      this.radarPlayerArrow.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+    }
+    
+    // Clear old drone blips
+    this.radarDroneElements.forEach(element => {
+      if (element.parentNode) {
+        element.parentNode.removeChild(element);
+      }
+    });
+    this.radarDroneElements = [];
+    
+    // Skip if no drones
+    if (!drones || drones.length === 0) return;
+    
+    // Get radar dimensions
+    const radarSize = this.radarElement.clientWidth;
+    const radarRadius = radarSize / 2;
+    
+    // Maximum distance to display on radar (match game's spawn distance)
+    const maxDistance = 50;
+    
+    // Add new drone blips
+    drones.forEach(drone => {
+      if (!drone || !drone.isEntityActive()) return;
+      
+      try {
+        // Get drone position
+        const dronePosition = drone.getPosition();
+        
+        // Calculate position relative to base (assume base is at center)
+        // Scale position to fit on radar
+        const relativeX = dronePosition.x; 
+        const relativeZ = dronePosition.z;
+        
+        // Calculate distance from center (radar range check)
+        const distance = Math.sqrt(relativeX * relativeX + relativeZ * relativeZ);
+        
+        // Skip if outside radar range
+        if (distance > maxDistance) return;
+        
+        // Map the distance to radar size (0 to maxDistance -> 0 to radarRadius)
+        const scaledDistance = (distance / maxDistance) * radarRadius;
+        
+        // Calculate angle
+        const angle = Math.atan2(relativeZ, relativeX);
+        
+        // Convert polar to cartesian coordinates on radar
+        const radarX = radarRadius + Math.cos(angle) * scaledDistance;
+        const radarY = radarRadius + Math.sin(angle) * scaledDistance;
+        
+        // Create drone blip element
+        const droneElement = document.createElement('div');
+        droneElement.className = 'radar-drone';
+        droneElement.style.left = `${radarX}px`;
+        droneElement.style.top = `${radarY}px`;
+        
+        // Add to radar and track
+        this.radarElement.appendChild(droneElement);
+        this.radarDroneElements.push(droneElement);
+      } catch (error) {
+        console.error("Error adding drone to radar:", error);
+      }
+    });
   }
   
   /**
@@ -294,6 +466,18 @@ export class GameUI {
   private showGameOver(): void {
     this.gameOverElement.style.display = 'flex';
     this.crosshairElement.style.display = 'none';
+    
+    // Exit pointer lock when game over screen is shown
+    // This ensures the player can click the restart button
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+    
+    // If we have an input manager, let it know we're now in a menu
+    if (this.inputManager) {
+      this.inputManager.resetMousePosition();
+      this.inputManager.setInSettingsMenu(true);
+    }
   }
   
   /**
@@ -301,6 +485,12 @@ export class GameUI {
    */
   private hideGameOver(): void {
     this.gameOverElement.style.display = 'none';
+    
+    // Reset input manager state when leaving game over screen
+    if (this.inputManager) {
+      this.inputManager.resetMousePosition();
+      this.inputManager.setInSettingsMenu(false);
+    }
   }
   
   /**

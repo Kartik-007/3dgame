@@ -177,6 +177,9 @@ export class Game {
     // Reset wave manager
     this.waveManager.reset();
     
+    // Reset input manager state for new game
+    this.inputManager.resetMousePosition();
+    
     // Disabled audio as requested
     // this.audioManager.playMusic('music_main');
     
@@ -271,8 +274,12 @@ export class Game {
       // Update world
       this.world.update(cappedDeltaTime);
       
-      // Update UI
-      this.gameUI.updateUI(this.gameState);
+      // Update UI with game state and active drones for radar
+      this.gameUI.updateUI(
+        this.gameState, 
+        this.waveManager['activeDrones'],
+        this.player.getCameraDirection()
+      );
     }
     
     // Render scene
