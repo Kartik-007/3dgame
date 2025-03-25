@@ -1,0 +1,55 @@
+# Game Features for Drone Defense Mini
+
+## Core Game Mechanics
+- **First-person View**: Fixed position camera with rotation controls
+- **Shooting Mechanism**: Simple click/tap to shoot projectiles
+- **Enemy Drones**: Basic cube-shaped drones that move toward the player's base
+- **Health System**: For both player's base and enemy drones
+- **Score System**: Points for shooting down drones
+- **Wave System**: Increasingly difficult waves of enemy drones
+
+## Player Controls
+- **Mouse/Touch Controls**: 
+  - Look around (mouse movement or touch drag)
+  - Shoot (mouse click or screen tap)
+- **Keyboard Controls**:
+  - ESC to pause game
+  - R to restart game
+  
+## Enemy Types
+- **Basic Drone**: Slow-moving, low health (blue)
+- **Fast Drone**: Quick-moving, low health (yellow)
+- **Tank Drone**: Slow-moving, high health (red)
+
+## Visual Elements
+- **Player Base**: Central structure to defend
+- **Environment**: Simple ground plane with minimal decorations
+- **Projectiles**: Simple bullet visualization
+- **Explosion Effects**: Basic particle effects when drones are destroyed
+- **HUD**: Health bar, score display, wave indicator
+
+## Audio Elements
+- **Shooting Sound**: When player fires
+- **Impact Sound**: When projectile hits a drone
+- **Explosion Sound**: When drone is destroyed
+- **Background Music**: Simple ambient track
+- **Game Over Sound**: When base is destroyed
+
+## Game States
+- **Start Screen**: Simple title and "Start Game" button
+- **Playing State**: Main gameplay
+- **Paused State**: Game paused with resume option
+- **Game Over State**: Show score and restart option
+
+## Mobile Optimization
+- **Responsive Design**: Adapts to different screen sizes
+- **Touch Controls**: Optimized for mobile play
+- **Performance Optimization**: Simplified effects for mobile devices
+
+## Competition Requirements
+- **Loading Speed**: Game loads almost instantly
+- **Web Accessible**: No login required
+- **Competition Badge**: Required badge code to show participation
+- **Cross-platform**: Works on desktop and mobile browsers
+
+This feature list is designed to be achievable within a 1-2 day timeframe while creating an engaging game experience that meets the competition requirements. 

@@ -1,185 +1,327 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { Config } from './config';
-import { Renderer } from './assets/renderer';
-import { InputManager } from './assets/input';
+import { World } from './core/world';
 import { Player } from './entities/player';
+import { PlayerBase } from './entities/base';
+import { InputManager } from './core/inputManager';
+import { CollisionManager } from './core/collisionManager';
+import { WaveManager } from './core/waveManager';
+import { GameState, GameStateType } from './core/gameState';
+import { GameUI } from './ui/gameUI';
+import { AudioManager } from './audio/audioManager';
+// Import Config from shim to avoid TS issues
+import { Config } from './config.shim';
 
+/**
+ * Game - Main game class
+ */
 export class Game {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
-  private renderer: Renderer;
-  private clock: THREE.Clock;
+  private renderer: THREE.WebGLRenderer;
+  private gameState: GameState;
   private inputManager: InputManager;
-  private controls: OrbitControls | null = null;
-  private isInitialized: boolean = false;
-  private player: Player | null = null;
-  private useOrbitControls: boolean = false; // Set to true for development/debug
+  private player: Player;
+  private playerBase: PlayerBase;
+  private waveManager: WaveManager;
+  private collisionManager: CollisionManager;
+  private world: World;
+  private gameUI: GameUI;
+  private audioManager: AudioManager;
+  private lastTime: number;
+  private isInitialized: boolean;
   
-  constructor() {
-    // Initialize Three.js components
+  constructor(container: HTMLElement) {
+    // Create scene
     this.scene = new THREE.Scene();
+    
+    // Create camera
     this.camera = new THREE.PerspectiveCamera(
-      Config.camera.fov,
+      Config.CAMERA_FOV,
       window.innerWidth / window.innerHeight,
-      Config.camera.near,
-      Config.camera.far
+      Config.CAMERA_NEAR,
+      Config.CAMERA_FAR
     );
+    this.camera.position.copy(Config.CAMERA_INITIAL_POSITION);
+    this.camera.lookAt(Config.CAMERA_LOOK_AT);
     
-    // Set up renderer
-    this.renderer = new Renderer(this.scene, this.camera);
+    // Create renderer
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setClearColor(Config.RENDERER_CLEAR_COLOR);
+    this.renderer.shadowMap.enabled = Config.RENDERER_SHADOW_ENABLED;
+    container.appendChild(this.renderer.domElement);
     
-    // Set up clock for consistent updates
-    this.clock = new THREE.Clock();
+    // Create game state
+    this.gameState = new GameState();
     
-    // Set up input manager
-    this.inputManager = new InputManager();
+    // Create input manager
+    this.inputManager = new InputManager(this.renderer.domElement);
     
-    // Set up camera position
-    this.camera.position.set(0, 5, 10);
-    this.camera.lookAt(0, 0, 0);
+    // Create player
+    this.player = new Player(this.camera);
     
-    // Set up OrbitControls if in development mode
-    if (this.useOrbitControls) {
-      this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-      this.controls.enableDamping = true;
-      this.controls.dampingFactor = 0.25;
-    }
+    // Create player base
+    this.playerBase = new PlayerBase();
+    this.playerBase.init();
+    this.scene.add(this.playerBase.getMesh()!);
     
-    // Add window resize event listener
-    window.addEventListener('resize', this.onWindowResize.bind(this));
-  }
-  
-  async init(): Promise<void> {
-    try {
-      // Add basic lighting
-      this.setupLighting();
-      
-      // Add temporary ground plane
-      this.addGroundPlane();
-      
-      // Create player
-      this.player = new Player(this.scene, this.inputManager, this.camera);
-      
-      // Update loading progress (later will be replaced with asset loading progress)
-      this.updateLoadingProgress(1.0);
-      
-      // Start the game loop
-      this.isInitialized = true;
-      this.hideLoadingScreen();
-      this.animate();
-      
-      console.log('Game initialized successfully!');
-    } catch (error) {
-      console.error('Failed to initialize game:', error);
-    }
-  }
-  
-  private setupLighting(): void {
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0x404040, 1);
-    this.scene.add(ambientLight);
+    // Setup world
+    this.world = new World(this.scene);
     
-    // Add directional light (sun-like)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1).normalize();
-    directionalLight.castShadow = true;
+    // Create wave manager
+    this.waveManager = new WaveManager(this.scene, this.gameState, this.playerBase);
     
-    // Configure shadow properties
-    if (directionalLight.shadow) {
-      directionalLight.shadow.mapSize.width = 1024;
-      directionalLight.shadow.mapSize.height = 1024;
-      directionalLight.shadow.camera.near = 0.5;
-      directionalLight.shadow.camera.far = 50;
-      directionalLight.shadow.camera.left = -20;
-      directionalLight.shadow.camera.right = 20;
-      directionalLight.shadow.camera.top = 20;
-      directionalLight.shadow.camera.bottom = -20;
-    }
+    // Create collision manager
+    this.collisionManager = new CollisionManager();
     
-    this.scene.add(directionalLight);
-  }
-  
-  private addGroundPlane(): void {
-    const geometry = new THREE.PlaneGeometry(40, 40, 10, 10);
-    const material = new THREE.MeshStandardMaterial({ 
-      color: 0x3d3d3d,
-      roughness: 0.8,
-      metalness: 0.2,
+    // Create UI
+    this.gameUI = new GameUI(container, this.gameState);
+    
+    // Connect input manager to UI for sensitivity adjustments
+    this.gameUI.setInputManager(this.inputManager);
+    
+    // Create audio manager
+    this.audioManager = new AudioManager();
+    
+    // Setup game state listeners
+    this.setupGameStateListeners();
+    
+    // Setup resize handler
+    window.addEventListener('resize', this.handleResize.bind(this));
+    
+    // Initialize timing
+    this.lastTime = performance.now();
+    this.isInitialized = true;
+    
+    // Setup player shoot callback
+    this.player.onShoot(() => {
+      // Disabled audio as requested
+      // this.audioManager.play('shoot');
     });
-    const plane = new THREE.Mesh(geometry, material);
-    plane.rotation.x = -Math.PI / 2;
-    plane.receiveShadow = true;
-    this.scene.add(plane);
     
-    // Add a few cubes around the scene to give spatial reference
-    for (let i = 0; i < 10; i++) {
-      const size = Math.random() * 0.5 + 0.5;
-      const cubeGeometry = new THREE.BoxGeometry(size, size, size);
-      const cubeMaterial = new THREE.MeshStandardMaterial({
-        color: Math.random() * 0xffffff,
-        roughness: 0.7,
-        metalness: 0.2,
-      });
-      const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    // Register hit callback
+    this.collisionManager.onHit((position: THREE.Vector3) => {
+      // Disabled audio as requested
+      // this.audioManager.play('hit');
       
-      // Random position within a certain range
-      const range = 15;
-      cube.position.set(
-        (Math.random() - 0.5) * range,
-        size / 2,
-        (Math.random() - 0.5) * range
-      );
-      
-      cube.castShadow = true;
-      cube.receiveShadow = true;
-      this.scene.add(cube);
+      // Create explosion effect
+      this.world.createExplosion(position);
+    });
+    
+    // Register wave callbacks
+    this.waveManager.onWaveStart((wave: number) => {
+      // Disabled audio as requested
+      // this.audioManager.play('wave_start');
+    });
+    
+    // Register drone destroyed callback
+    this.waveManager.onDroneDestroyed((position: THREE.Vector3) => {
+      // Disabled audio as requested
+      // this.audioManager.play('explosion');
+    });
+    
+    // Register base callback
+    this.playerBase.onDestroyed(() => {
+      // Disabled audio as requested
+      // this.audioManager.play('game_over');
+    });
+    
+    // Setup UI callbacks
+    this.gameUI.onStartGame(() => {
+      this.startGame();
+    });
+    
+    this.gameUI.onRestartGame(() => {
+      this.startGame();
+    });
+  }
+  
+  /**
+   * Setup game state listeners
+   */
+  private setupGameStateListeners(): void {
+    this.gameState.onStateChange((newState, oldState) => {
+      if (newState === GameStateType.PLAYING && oldState === GameStateType.MENU) {
+        // Disabled audio as requested
+        // this.audioManager.playMusic('music_main');
+      } else if (newState === GameStateType.GAME_OVER) {
+        // Disabled audio as requested
+        // this.audioManager.stopMusic();
+        // this.audioManager.play('game_over');
+      }
+    });
+  }
+  
+  /**
+   * Start a new game
+   */
+  startGame(): void {
+    // Reset game state
+    this.gameState.startGame(Config.BASE_HEALTH);
+    
+    // Reset player
+    this.player.reset();
+    
+    // Reset base
+    this.playerBase.reset();
+    
+    // Reset wave manager
+    this.waveManager.reset();
+    
+    // Disabled audio as requested
+    // this.audioManager.playMusic('music_main');
+    
+    // Request pointer lock to fix initial mouse sensitivity issue
+    // But only do this if we're not currently interacting with the settings menu
+    if (document.pointerLockElement !== this.renderer.domElement && 
+        !document.querySelector('.settings-menu')?.matches(':hover')) {
+      // Small delay to ensure UI interactions are complete
+      setTimeout(() => {
+        if (this.gameState.isState(GameStateType.PLAYING)) {
+          this.renderer.domElement.requestPointerLock();
+        }
+      }, 100);
     }
   }
   
-  private animate(): void {
+  /**
+   * Main game loop
+   */
+  update(): void {
     if (!this.isInitialized) return;
     
-    requestAnimationFrame(this.animate.bind(this));
+    // Calculate delta time
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
+    this.lastTime = currentTime;
     
-    const delta = this.clock.getDelta();
+    // Cap delta time to avoid huge jumps
+    const cappedDeltaTime = Math.min(deltaTime, 0.1);
     
-    // Update controls if using OrbitControls
-    if (this.useOrbitControls && this.controls) {
-      this.controls.update();
+    // Handle input
+    const inputState = this.inputManager.getInputState();
+    
+    // Check for pause toggle
+    if (inputState.isPaused) {
+      if (this.gameState.isState(GameStateType.PLAYING)) {
+        this.gameState.setState(GameStateType.PAUSED);
+        // Exit pointer lock when pausing
+        if (document.pointerLockElement === this.renderer.domElement) {
+          document.exitPointerLock();
+        }
+      } else if (this.gameState.isState(GameStateType.PAUSED)) {
+        this.gameState.setState(GameStateType.PLAYING);
+      }
     }
     
-    // Update player if it exists
-    if (this.player) {
-      this.player.update(delta);
+    // Update game based on current state
+    if (this.gameState.isState(GameStateType.PLAYING)) {
+      // Update player
+      this.player.update(cappedDeltaTime, inputState, this.scene);
+      
+      // Update player base
+      this.playerBase.update(cappedDeltaTime);
+      
+      // Update wave manager
+      this.waveManager.update(cappedDeltaTime);
+      
+      // Update collision detection
+      this.collisionManager.setProjectiles(this.player.getActiveProjectiles());
+      this.collisionManager.setDrones(this.waveManager['activeDrones']);
+      this.collisionManager.checkCollisions();
+      
+      // Clean up any destroyed drones that might still be in the active list
+      if (this.waveManager['activeDrones']) {
+        // We need to remove destroyed drones from the scene and the active list
+        for (let i = this.waveManager['activeDrones'].length - 1; i >= 0; i--) {
+          const drone = this.waveManager['activeDrones'][i];
+          
+          // Check if the drone is destroyed or inactive
+          if (drone && (drone.getHealth() <= 0 || !drone.isEntityActive())) {
+            // Log that we're removing a drone for debugging
+            console.log(`Forcing removal of drone with health ${drone.getHealth()}, active: ${drone.isEntityActive()}`);
+            
+            // Remove from active drones array
+            this.waveManager['activeDrones'].splice(i, 1);
+            
+            // Force the drone to be completely destroyed and removed
+            if (drone.getHealth() <= 0) {
+              drone.forceDestroy();
+            } else {
+              // For drones that are just inactive but not destroyed
+              // Ensure mesh is removed from scene
+              const droneMesh = drone.getMesh();
+              if (droneMesh && droneMesh.parent) {
+                droneMesh.parent.remove(droneMesh);
+              }
+            }
+          }
+        }
+      }
+      
+      // Update world
+      this.world.update(cappedDeltaTime);
+      
+      // Update UI
+      this.gameUI.updateUI(this.gameState);
     }
     
-    // Render the scene
-    this.renderer.render();
+    // Render scene
+    this.renderer.render(this.scene, this.camera);
+    
+    // Request next frame
+    requestAnimationFrame(this.update.bind(this));
   }
   
-  private onWindowResize(): void {
+  /**
+   * Handle window resize
+   */
+  private handleResize(): void {
+    // Update camera aspect ratio
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
+    
+    // Update renderer size
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
   
-  private updateLoadingProgress(progress: number): void {
-    const progressBar = document.getElementById('loading-progress');
-    if (progressBar) {
-      progressBar.style.width = `${progress * 100}%`;
-    }
+  /**
+   * Start the game
+   */
+  start(): void {
+    // Start game loop
+    requestAnimationFrame(this.update.bind(this));
   }
   
-  private hideLoadingScreen(): void {
-    const loadingScreen = document.querySelector('.loading-screen');
-    if (loadingScreen) {
-      loadingScreen.classList.add('fade-out');
-      setTimeout(() => {
-        if (loadingScreen.parentNode) {
-          loadingScreen.parentNode.removeChild(loadingScreen);
-        }
-      }, 500);
-    }
+  /**
+   * Clean up resources
+   */
+  dispose(): void {
+    // Clean up input manager
+    this.inputManager.dispose();
+    
+    // Clean up player
+    this.player.dispose();
+    
+    // Clean up base
+    this.playerBase.dispose();
+    
+    // Clean up wave manager
+    this.waveManager.dispose();
+    
+    // Clean up collision manager
+    this.collisionManager.dispose();
+    
+    // Clean up world
+    this.world.dispose();
+    
+    // Clean up audio
+    this.audioManager.dispose();
+    
+    // Remove event listeners
+    window.removeEventListener('resize', this.handleResize.bind(this));
+    
+    // Clean up renderer
+    this.renderer.dispose();
   }
 } 

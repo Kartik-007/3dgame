@@ -1,178 +1,159 @@
-import { Config } from '../config';
-
+/**
+ * Input manager for handling keyboard and mouse input
+ */
 export class InputManager {
   // Keyboard state
   private keys: { [key: string]: boolean } = {};
   
   // Mouse state
   private mousePosition: { x: number, y: number } = { x: 0, y: 0 };
+  private mouseDelta: { x: number, y: number } = { x: 0, y: 0 };
   private mouseButtons: { [button: number]: boolean } = {};
   
-  // Mobile touch state
-  private touchActive: boolean = false;
-  private touchPosition: { x: number, y: number } = { x: 0, y: 0 };
-  private joystickPosition: { x: number, y: number } = { x: 0, y: 0 };
-  
-  // Joystick elements
-  private joystickElement: HTMLElement | null = null;
-  private joystickKnob: HTMLElement | null = null;
-  
-  // Is mobile device
-  private isMobile: boolean = false;
+  // Pointer lock state
+  private isPointerLocked: boolean = false;
   
   constructor() {
-    // Detect mobile devices
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
     // Set up event listeners
-    this.setupKeyboardEvents();
-    this.setupMouseEvents();
+    this.setupEventListeners();
+  }
+  
+  /**
+   * Set up all event listeners for keyboard and mouse
+   */
+  private setupEventListeners(): void {
+    // Keyboard events
+    window.addEventListener('keydown', (event) => this.onKeyDown(event));
+    window.addEventListener('keyup', (event) => this.onKeyUp(event));
     
-    // Set up touch events for mobile
-    if (this.isMobile) {
-      this.setupTouchEvents();
+    // Mouse events
+    window.addEventListener('mousemove', (event) => this.onMouseMove(event));
+    window.addEventListener('mousedown', (event) => this.onMouseDown(event));
+    window.addEventListener('mouseup', (event) => this.onMouseUp(event));
+    
+    // Pointer lock events
+    document.addEventListener('pointerlockchange', () => this.onPointerLockChange());
+    
+    console.log('Input manager initialized');
+  }
+  
+  /**
+   * Handle keydown events
+   */
+  private onKeyDown(event: KeyboardEvent): void {
+    this.keys[event.code] = true;
+  }
+  
+  /**
+   * Handle keyup events
+   */
+  private onKeyUp(event: KeyboardEvent): void {
+    this.keys[event.code] = false;
+  }
+  
+  /**
+   * Handle mouse movement
+   */
+  private onMouseMove(event: MouseEvent): void {
+    // Update mouse position
+    this.mousePosition.x = event.clientX;
+    this.mousePosition.y = event.clientY;
+    
+    // Update mouse delta if pointer is locked
+    if (this.isPointerLocked) {
+      this.mouseDelta.x = event.movementX || 0;
+      this.mouseDelta.y = event.movementY || 0;
     }
   }
   
-  private setupKeyboardEvents(): void {
-    window.addEventListener('keydown', (event) => {
-      this.keys[event.key.toLowerCase()] = true;
-    });
-    
-    window.addEventListener('keyup', (event) => {
-      this.keys[event.key.toLowerCase()] = false;
-    });
+  /**
+   * Handle mouse button down
+   */
+  private onMouseDown(event: MouseEvent): void {
+    this.mouseButtons[event.button] = true;
   }
   
-  private setupMouseEvents(): void {
-    window.addEventListener('mousemove', (event) => {
-      this.mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    });
-    
-    window.addEventListener('mousedown', (event) => {
-      this.mouseButtons[event.button] = true;
-    });
-    
-    window.addEventListener('mouseup', (event) => {
-      this.mouseButtons[event.button] = false;
-    });
+  /**
+   * Handle mouse button up
+   */
+  private onMouseUp(event: MouseEvent): void {
+    this.mouseButtons[event.button] = false;
   }
   
-  private setupTouchEvents(): void {
-    // Get joystick elements
-    this.joystickElement = document.querySelector('.mobile-controls');
-    this.joystickKnob = document.querySelector('.joystick');
-    
-    if (this.joystickElement && this.joystickKnob) {
-      this.joystickElement.addEventListener('touchstart', this.handleJoystickStart.bind(this));
-      this.joystickElement.addEventListener('touchmove', this.handleJoystickMove.bind(this));
-      this.joystickElement.addEventListener('touchend', this.handleJoystickEnd.bind(this));
+  /**
+   * Handle pointer lock change
+   */
+  private onPointerLockChange(): void {
+    this.isPointerLocked = document.pointerLockElement !== null;
+  }
+  
+  /**
+   * Request pointer lock on the document
+   */
+  requestPointerLock(): void {
+    if (!this.isPointerLocked) {
+      document.body.requestPointerLock();
     }
   }
   
-  private handleJoystickStart(event: TouchEvent): void {
-    event.preventDefault();
-    this.touchActive = true;
-    this.updateJoystickPosition(event);
-  }
-  
-  private handleJoystickMove(event: TouchEvent): void {
-    if (!this.touchActive) return;
-    event.preventDefault();
-    this.updateJoystickPosition(event);
-  }
-  
-  private handleJoystickEnd(event: TouchEvent): void {
-    event.preventDefault();
-    this.touchActive = false;
-    this.resetJoystick();
-  }
-  
-  private updateJoystickPosition(event: TouchEvent): void {
-    if (!this.joystickElement || !this.joystickKnob) return;
-    
-    const touch = event.touches[0];
-    const rect = this.joystickElement.getBoundingClientRect();
-    
-    // Calculate touch position relative to joystick center
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    // Calculate position
-    let deltaX = touch.clientX - centerX;
-    let deltaY = touch.clientY - centerY;
-    
-    // Calculate distance from center
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const maxDistance = rect.width / 2;
-    
-    // If joystick is outside the max distance, normalize it
-    if (distance > maxDistance) {
-      const ratio = maxDistance / distance;
-      deltaX *= ratio;
-      deltaY *= ratio;
+  /**
+   * Exit pointer lock
+   */
+  exitPointerLock(): void {
+    if (this.isPointerLocked) {
+      document.exitPointerLock();
     }
-    
-    // Update joystick knob position
-    const knobX = deltaX;
-    const knobY = deltaY;
-    this.joystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
-    
-    // Normalize for input values between -1 and 1
-    this.joystickPosition.x = deltaX / maxDistance;
-    this.joystickPosition.y = deltaY / maxDistance;
   }
   
-  private resetJoystick(): void {
-    if (this.joystickKnob) {
-      this.joystickKnob.style.transform = 'translate(-50%, -50%)';
-    }
-    this.joystickPosition.x = 0;
-    this.joystickPosition.y = 0;
+  /**
+   * Check if a key is currently pressed
+   */
+  isKeyPressed(code: string): boolean {
+    return this.keys[code] === true;
   }
   
-  // Public methods to check input state
-  isKeyDown(key: string): boolean {
-    return !!this.keys[key.toLowerCase()];
+  /**
+   * Check if a mouse button is currently pressed
+   * 0 = left, 1 = middle, 2 = right
+   */
+  isMouseButtonPressed(button: number): boolean {
+    return this.mouseButtons[button] === true;
   }
   
-  isMouseButtonDown(button: number): boolean {
-    return !!this.mouseButtons[button];
-  }
-  
+  /**
+   * Get the current mouse position
+   */
   getMousePosition(): { x: number, y: number } {
     return { ...this.mousePosition };
   }
   
-  getJoystickPosition(): { x: number, y: number } {
-    return { ...this.joystickPosition };
-  }
-  
-  isTouchActive(): boolean {
-    return this.touchActive;
-  }
-  
-  // Movement helper methods
-  getHorizontalMovement(): number {
-    if (this.isMobile && this.touchActive) {
-      return this.joystickPosition.x;
-    }
+  /**
+   * Get the mouse movement delta
+   * Only returns values when pointer is locked
+   */
+  getMouseDelta(): { x: number, y: number } {
+    const delta = { ...this.mouseDelta };
     
-    let movement = 0;
-    if (this.isKeyDown('a') || this.isKeyDown('arrowleft')) movement -= 1;
-    if (this.isKeyDown('d') || this.isKeyDown('arrowright')) movement += 1;
-    return movement;
+    // Reset delta after reading
+    this.mouseDelta.x = 0;
+    this.mouseDelta.y = 0;
+    
+    return delta;
   }
   
-  getVerticalMovement(): number {
-    if (this.isMobile && this.touchActive) {
-      return -this.joystickPosition.y; // Invert Y axis for intuitive control
-    }
-    
-    let movement = 0;
-    if (this.isKeyDown('w') || this.isKeyDown('arrowup')) movement += 1;
-    if (this.isKeyDown('s') || this.isKeyDown('arrowdown')) movement -= 1;
-    return movement;
+  /**
+   * Check if pointer is locked
+   */
+  getPointerLockState(): boolean {
+    return this.isPointerLocked;
+  }
+  
+  /**
+   * Reset all input states
+   */
+  reset(): void {
+    this.keys = {};
+    this.mouseButtons = {};
+    this.mouseDelta = { x: 0, y: 0 };
   }
 } 

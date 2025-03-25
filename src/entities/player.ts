@@ -1,124 +1,242 @@
+/**
+ * Player - Controls the camera and shooting mechanics
+ */
+
 import * as THREE from 'three';
 import { Config } from '../config';
-import { InputManager } from '../assets/input';
+import { InputState } from '../core/inputManager';
+import { Projectile } from './projectile';
 
 export class Player {
-  private mesh: THREE.Group;
-  private inputManager: InputManager;
-  private velocity: THREE.Vector3 = new THREE.Vector3();
-  private direction: THREE.Vector3 = new THREE.Vector3();
-  private position: THREE.Vector3 = new THREE.Vector3();
-  private camera: THREE.Camera;
-  private cameraOffset: THREE.Vector3 = new THREE.Vector3(0, 5, 10);
-  private cameraTarget: THREE.Vector3 = new THREE.Vector3();
-  private moveSpeed: number = Config.player.moveSpeed;
-  private rotationSpeed: number = Config.player.rotationSpeed;
+  private camera: THREE.PerspectiveCamera;
+  private cameraDirection: THREE.Vector3;
+  private position: THREE.Vector3;
+  private shootCooldown: number;
+  private lastShootTime: number;
+  private projectiles: Projectile[];
+  private activeProjectiles: Projectile[];
+  private onShootCallbacks: (() => void)[];
+  private maxLookUpAngle: number;
+  private maxLookDownAngle: number;
+  private verticalAngle: number;
+  private horizontalAngle: number;
   
-  constructor(scene: THREE.Scene, inputManager: InputManager, camera: THREE.Camera) {
-    this.inputManager = inputManager;
+  constructor(camera: THREE.PerspectiveCamera) {
     this.camera = camera;
+    this.position = camera.position.clone();
+    this.cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    this.shootCooldown = Config.PLAYER_SHOOT_COOLDOWN;
+    this.lastShootTime = 0;
+    this.projectiles = [];
+    this.activeProjectiles = [];
+    this.onShootCallbacks = [];
     
-    // Create player mesh
-    this.mesh = this.createPlayerMesh();
-    scene.add(this.mesh);
+    // Camera angle constraints
+    this.maxLookUpAngle = Math.PI / 3; // 60 degrees up
+    this.maxLookDownAngle = -Math.PI / 3; // 60 degrees down
     
-    // Set initial position
-    this.position.set(0, 1, 0);
-    this.mesh.position.copy(this.position);
+    // Current camera rotation angles
+    this.verticalAngle = 0;
+    this.horizontalAngle = 0;
     
-    // Update camera position
-    this.updateCameraPosition();
+    // Create a pool of projectiles for reuse
+    this.initializeProjectilePool(20);
   }
   
-  createPlayerMesh(): THREE.Group {
-    const group = new THREE.Group();
-    
-    // Create player body (simple capsule for now)
-    const bodyGeometry = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
-    const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0x3f77ff,
-      roughness: 0.5,
-      metalness: 0.2,
-    });
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.castShadow = true;
-    body.position.y = 1; // Adjust to place on ground
-    group.add(body);
-    
-    return group;
+  /**
+   * Initialize a pool of projectiles for reuse
+   */
+  private initializeProjectilePool(count: number): void {
+    for (let i = 0; i < count; i++) {
+      const projectile = new Projectile();
+      projectile.init();
+      projectile.setActive(false);
+      this.projectiles.push(projectile);
+    }
   }
   
-  update(delta: number): void {
-    // Get input direction from keyboard/touch
-    const horizontalInput = this.inputManager.getHorizontalMovement();
-    const verticalInput = this.inputManager.getVerticalMovement();
+  /**
+   * Update player logic
+   */
+  update(deltaTime: number, inputState: InputState, scene: THREE.Scene): void {
+    // Update camera based on input
+    this.updateCamera(deltaTime, inputState);
     
-    // Calculate movement direction relative to camera
-    this.direction.set(
-      horizontalInput,
-      0,
-      -verticalInput
-    ).normalize();
-    
-    // Set velocity based on input
-    if (this.direction.lengthSq() > 0) {
-      // Calculate camera direction
-      const cameraDirection = new THREE.Vector3();
-      this.camera.getWorldDirection(cameraDirection);
-      cameraDirection.y = 0;
-      cameraDirection.normalize();
-      
-      // Calculate right vector from camera
-      const right = new THREE.Vector3();
-      right.crossVectors(new THREE.Vector3(0, 1, 0), cameraDirection).normalize();
-      
-      // Combine movement direction with camera orientation
-      this.velocity.set(0, 0, 0);
-      
-      // Add forward/backward movement
-      if (verticalInput !== 0) {
-        this.velocity.add(cameraDirection.multiplyScalar(verticalInput));
-      }
-      
-      // Add left/right movement
-      if (horizontalInput !== 0) {
-        this.velocity.add(right.multiplyScalar(horizontalInput));
-      }
-      
-      // Normalize and apply move speed
-      this.velocity.normalize().multiplyScalar(this.moveSpeed * delta);
-      
-      // Update position
-      this.position.add(this.velocity);
-      
-      // Rotate player mesh to face movement direction
-      if (this.velocity.lengthSq() > 0.0001) {
-        const targetRotation = Math.atan2(this.velocity.x, this.velocity.z);
-        this.mesh.rotation.y = targetRotation;
-      }
-    } else {
-      // No input, stop movement
-      this.velocity.set(0, 0, 0);
+    // Handle shooting
+    if (inputState.isShooting) {
+      this.tryShoot(scene);
     }
     
-    // Update mesh position
-    this.mesh.position.copy(this.position);
-    
-    // Update camera position to follow player
-    this.updateCameraPosition();
+    // Update active projectiles
+    this.updateProjectiles(deltaTime);
   }
   
-  private updateCameraPosition(): void {
-    // Calculate camera position based on player position and offset
-    this.cameraTarget.copy(this.position);
+  /**
+   * Update camera rotation based on mouse/touch input
+   */
+  private updateCamera(deltaTime: number, inputState: InputState): void {
+    // Calculate rotation speed based on config
+    const rotationSpeed = Config.PLAYER_ROTATION_SPEED;
     
-    // For now, just use a simple offset
-    // In a more advanced implementation, we'd interpolate and add collision detection
-    this.camera.position.copy(this.position).add(this.cameraOffset);
-    this.camera.lookAt(this.cameraTarget);
+    // Get mouse movement (already accumulated in input manager)
+    // The sensitivity is already applied in InputManager
+    const deltaX = inputState.mouseX * rotationSpeed;
+    const deltaY = inputState.mouseY * rotationSpeed;
+    
+    // Only update camera if there's actual movement
+    // Using strict equality with zero to ensure no drift
+    if (deltaX !== 0 || deltaY !== 0) {
+      // Update horizontal rotation (around Y axis)
+      this.horizontalAngle -= deltaX;
+      
+      // Update vertical rotation (around X axis)
+      this.verticalAngle = Math.max(
+        this.maxLookDownAngle,
+        Math.min(this.maxLookUpAngle, this.verticalAngle - deltaY)
+      );
+      
+      // Apply rotations to the camera
+      this.camera.quaternion.setFromEuler(
+        new THREE.Euler(this.verticalAngle, this.horizontalAngle, 0, 'YXZ')
+      );
+      
+      // Update camera direction vector
+      this.cameraDirection.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    }
   }
   
-  getPosition(): THREE.Vector3 {
-    return this.position.clone();
+  /**
+   * Try to shoot a projectile
+   */
+  private tryShoot(scene: THREE.Scene): void {
+    const currentTime = performance.now() / 1000; // Convert to seconds
+    
+    // Check cooldown
+    if (currentTime - this.lastShootTime < this.shootCooldown) {
+      return;
+    }
+    
+    // Update last shoot time
+    this.lastShootTime = currentTime;
+    
+    // Get an inactive projectile from the pool
+    const projectile = this.getProjectileFromPool();
+    if (!projectile) {
+      // No available projectiles
+      return;
+    }
+    
+    // Set projectile position and direction
+    const offsetPosition = new THREE.Vector3(0, -0.2, -0.5);
+    offsetPosition.applyQuaternion(this.camera.quaternion);
+    offsetPosition.add(this.camera.position);
+    
+    projectile.reset(offsetPosition, this.cameraDirection.clone());
+    
+    // Add to scene if not already
+    if (!scene.children.includes(projectile.getMesh()!)) {
+      scene.add(projectile.getMesh()!);
+    }
+    
+    // Add to active projectiles
+    this.activeProjectiles.push(projectile);
+    
+    // Notify listeners
+    this.onShootCallbacks.forEach(callback => callback());
+  }
+  
+  /**
+   * Get an inactive projectile from the pool
+   */
+  private getProjectileFromPool(): Projectile | null {
+    // Find an inactive projectile
+    for (let i = 0; i < this.projectiles.length; i++) {
+      if (!this.projectiles[i].isEntityActive()) {
+        return this.projectiles[i];
+      }
+    }
+    
+    // No inactive projectiles found
+    return null;
+  }
+  
+  /**
+   * Update all active projectiles
+   */
+  private updateProjectiles(deltaTime: number): void {
+    // Update active projectiles
+    for (let i = this.activeProjectiles.length - 1; i >= 0; i--) {
+      const projectile = this.activeProjectiles[i];
+      
+      // Update projectile
+      projectile.update(deltaTime);
+      
+      // Remove from active list if no longer active
+      if (!projectile.isEntityActive()) {
+        // Remove from scene
+        const mesh = projectile.getMesh();
+        if (mesh && mesh.parent) {
+          mesh.parent.remove(mesh);
+        }
+        
+        // Remove from active list
+        this.activeProjectiles.splice(i, 1);
+      }
+    }
+  }
+  
+  /**
+   * Get the player's active projectiles
+   */
+  getActiveProjectiles(): Projectile[] {
+    return this.activeProjectiles;
+  }
+  
+  /**
+   * Reset player to initial state
+   */
+  reset(): void {
+    // Reset camera position and rotation
+    this.camera.position.copy(Config.CAMERA_INITIAL_POSITION);
+    this.camera.lookAt(Config.CAMERA_LOOK_AT);
+    
+    // Reset internal state
+    this.position = this.camera.position.clone();
+    this.cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    this.lastShootTime = 0;
+    this.verticalAngle = 0;
+    this.horizontalAngle = 0;
+    
+    // Remove all active projectiles
+    this.activeProjectiles.forEach(projectile => {
+      projectile.setActive(false);
+      const mesh = projectile.getMesh();
+      if (mesh && mesh.parent) {
+        mesh.parent.remove(mesh);
+      }
+    });
+    
+    this.activeProjectiles = [];
+  }
+  
+  /**
+   * Register a callback for when the player shoots
+   */
+  onShoot(callback: () => void): void {
+    this.onShootCallbacks.push(callback);
+  }
+  
+  /**
+   * Clean up resources
+   */
+  dispose(): void {
+    // Dispose projectiles
+    this.projectiles.forEach(projectile => {
+      projectile.dispose();
+    });
+    
+    this.projectiles = [];
+    this.activeProjectiles = [];
+    this.onShootCallbacks = [];
   }
 } 
