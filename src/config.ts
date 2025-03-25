@@ -19,8 +19,8 @@ export class Config {
   static CAMERA_FOV = 75;
   static CAMERA_NEAR = 0.1;
   static CAMERA_FAR = 1000;
-  static CAMERA_INITIAL_POSITION = new THREE.Vector3(0, 5, 0); // Centered position
-  static CAMERA_LOOK_AT = new THREE.Vector3(0, 5, -10); // Looking forward
+  static CAMERA_INITIAL_POSITION = new THREE.Vector3(0, 10, 15); // Higher position and further back
+  static CAMERA_LOOK_AT = new THREE.Vector3(0, 3, 0); // Looking toward center of the world
   
   // Renderer settings
   static RENDERER_CLEAR_COLOR = 0x000000;
@@ -47,7 +47,7 @@ export class Config {
   static BASE_HEALTH = 100;
   static BASE_SIZE = 5;
   static BASE_COLOR = 0x2196f3;
-  static BASE_POSITION = new THREE.Vector3(0, 2.5, -15); // In front of player
+  static BASE_POSITION = new THREE.Vector3(0, 2.5, 0); // Centered position
   
   // Projectile settings
   static PROJECTILE_SPEED = 50;

@@ -200,14 +200,28 @@ export class Player {
     this.camera.position.copy(Config.CAMERA_INITIAL_POSITION);
     this.camera.lookAt(Config.CAMERA_LOOK_AT);
     
-    // Reset internal state
-    this.position = this.camera.position.clone();
-    this.cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-    this.lastShootTime = 0;
-    this.verticalAngle = 0;
-    this.horizontalAngle = 0;
+    // Reset stored angles based on the lookAt target
+    const direction = new THREE.Vector3().subVectors(
+      Config.CAMERA_LOOK_AT,
+      Config.CAMERA_INITIAL_POSITION
+    ).normalize();
     
-    // Remove all active projectiles
+    // Calculate initial rotation angles
+    this.verticalAngle = -Math.asin(direction.y);
+    this.horizontalAngle = Math.atan2(-direction.x, -direction.z);
+    
+    // Apply rotation to camera
+    this.camera.quaternion.setFromEuler(
+      new THREE.Euler(this.verticalAngle, this.horizontalAngle, 0, 'YXZ')
+    );
+    
+    // Update camera direction
+    this.cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    
+    // Reset shooting cooldown
+    this.lastShootTime = 0;
+    
+    // Deactivate all projectiles
     this.activeProjectiles.forEach(projectile => {
       projectile.setActive(false);
       const mesh = projectile.getMesh();

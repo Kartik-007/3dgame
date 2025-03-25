@@ -24,6 +24,11 @@ export abstract class Drone extends Entity {
   protected onDestroyedCallbacks: ((points: number) => void)[];
   protected scene: THREE.Scene | null;
   
+  // Path variation properties
+  protected pathVariation: number;
+  protected timeSinceSpawn: number;
+  protected waveNumber: number;
+  
   constructor(options: DroneOptions = {}) {
     super(options);
     
@@ -35,6 +40,11 @@ export abstract class Drone extends Entity {
     this.targetBase = options.targetBase || null;
     this.onDestroyedCallbacks = [];
     this.scene = null;
+    
+    // Initialize path variation properties
+    this.pathVariation = 0;
+    this.timeSinceSpawn = 0;
+    this.waveNumber = 1;
   }
   
   /**
@@ -52,20 +62,62 @@ export abstract class Drone extends Entity {
       return;
     }
     
+    // Increment time since spawn
+    this.timeSinceSpawn += deltaTime;
+    
     // Get direction to base
     const basePosition = this.targetBase.getPosition();
     const direction = new THREE.Vector3()
       .subVectors(basePosition, this.position)
       .normalize();
     
-    // Move drone toward base
-    const movement = direction.multiplyScalar(this.speed * deltaTime);
-    this.position.add(movement);
-    
-    // Rotate drone to face movement direction
-    if (direction.length() > 0.01) {
-      const lookAt = new THREE.Vector3().addVectors(this.position, direction);
+    // Apply non-linear movement if wave number >= 3 and path variation > 0
+    if (this.waveNumber >= 3 && this.pathVariation > 0) {
+      // Add zigzag/oscillation to movement
+      const oscillationFrequency = 1 + (this.waveNumber - 3) * 0.2; // Increase with wave number
+      const oscillationMagnitude = this.pathVariation;
+      
+      // Create perpendicular vectors for zigzag movement
+      const up = new THREE.Vector3(0, 1, 0);
+      const sideways = new THREE.Vector3().crossVectors(direction, up).normalize();
+      
+      // Calculate perpendicular oscillation (horizontal zigzag)
+      const horizontalOffset = Math.sin(this.timeSinceSpawn * oscillationFrequency * 2) * oscillationMagnitude;
+      const horizontalMovement = sideways.clone().multiplyScalar(horizontalOffset * deltaTime * 2);
+      
+      // Calculate vertical oscillation (up and down movement) - less pronounced than horizontal
+      const verticalOffset = Math.sin(this.timeSinceSpawn * oscillationFrequency) * (oscillationMagnitude * 0.7);
+      const verticalMovement = up.clone().multiplyScalar(verticalOffset * deltaTime * 2);
+      
+      // Combine movement vectors: base direction + zigzag
+      const movement = direction.multiplyScalar(this.speed * deltaTime);
+      movement.add(horizontalMovement).add(verticalMovement);
+      
+      this.position.add(movement);
+      
+      // Create a look-ahead position that smoothly follows our zigzag path
+      const lookAheadDistance = 2.0;
+      const smoothedDirection = direction.clone()
+        .add(sideways.multiplyScalar(horizontalOffset * 0.2))
+        .add(up.multiplyScalar(verticalOffset * 0.1))
+        .normalize();
+      
+      const lookAt = new THREE.Vector3().addVectors(
+        this.position, 
+        smoothedDirection.multiplyScalar(lookAheadDistance)
+      );
+      
       this.updateDroneRotation(lookAt);
+    } else {
+      // Standard linear movement
+      const movement = direction.multiplyScalar(this.speed * deltaTime);
+      this.position.add(movement);
+      
+      // Standard rotation
+      if (direction.length() > 0.01) {
+        const lookAt = new THREE.Vector3().addVectors(this.position, direction);
+        this.updateDroneRotation(lookAt);
+      }
     }
     
     // Update mesh transform
@@ -755,6 +807,29 @@ export abstract class Drone extends Entity {
   }
   
   /**
+   * Set the current wave number
+   * This affects the drone's movement pattern
+   */
+  setWaveNumber(wave: number): void {
+    this.waveNumber = wave;
+  }
+  
+  /**
+   * Set the path variation amount
+   * Higher values create more erratic movement patterns
+   */
+  setPathVariation(variation: number): void {
+    this.pathVariation = variation;
+  }
+  
+  /**
+   * Get the current wave number
+   */
+  getWaveNumber(): number {
+    return this.waveNumber;
+  }
+  
+  /**
    * Reset the drone to its initial state
    */
   reset(position: THREE.Vector3): void {
@@ -766,6 +841,9 @@ export abstract class Drone extends Entity {
     
     // Set position
     this.position.copy(position);
+    
+    // Reset movement pattern variables
+    this.timeSinceSpawn = 0;
     
     // Ensure the mesh is visible and properly configured
     if (this.mesh) {
@@ -808,5 +886,12 @@ export abstract class Drone extends Entity {
     if (mesh && mesh.parent instanceof THREE.Scene) {
       this.scene = mesh.parent;
     }
+  }
+
+  /**
+   * Set the drone's speed
+   */
+  setSpeed(speed: number): void {
+    this.speed = speed;
   }
 } 

@@ -247,6 +247,9 @@ export class WaveManager {
     // Full reset of the drone
     drone.reset(spawnPosition);
     
+    // Apply wave-specific modifications
+    this.applyWaveModifications(drone);
+    
     // Double-check the drone is fully initialized
     if (drone.getHealth() <= 0) {
       console.warn("Drone health is zero after reset - forcing health restore");
@@ -276,17 +279,40 @@ export class WaveManager {
   }
   
   /**
+   * Apply wave-specific modifications to a drone
+   */
+  private applyWaveModifications(drone: Drone): void {
+    // Set the current wave number in the drone
+    drone.setWaveNumber(this.currentWave);
+    
+    // Increase speed slightly with each wave (5% per wave)
+    const baseSpeed = drone.getSpeed();
+    const speedIncrease = 1 + (this.currentWave - 1) * 0.05; // 5% increase per wave
+    drone.setSpeed(baseSpeed * speedIncrease);
+    
+    // Calculate path variation (starts at wave 3)
+    if (this.currentWave >= 3) {
+      // Gradually increase path variation from wave 3 onwards
+      const variation = (this.currentWave - 2) * 0.3; // Starts at 0.3 at wave 3, increases by 0.3 each wave
+      drone.setPathVariation(variation);
+    } else {
+      drone.setPathVariation(0); // No variation for first 2 waves
+    }
+  }
+  
+  /**
    * Get a random spawn position around the perimeter
    */
   private getRandomSpawnPosition(): THREE.Vector3 {
-    const angle = Math.random() * Math.PI * 2;
+    const angle = Math.random() * Math.PI * 2; // Full 360° spawn circle
     const distance = Config.DRONE_SPAWN_DISTANCE;
     const height = Config.DRONE_SPAWN_HEIGHT_MIN + 
       (Math.random() * (Config.DRONE_SPAWN_HEIGHT_MAX - Config.DRONE_SPAWN_HEIGHT_MIN));
     
     // Calculate position on circle around the base
-    const x = Math.cos(angle) * distance;
-    const z = Math.sin(angle) * distance;
+    const basePosition = this.targetBase.getPosition();
+    const x = basePosition.x + Math.cos(angle) * distance;
+    const z = basePosition.z + Math.sin(angle) * distance;
     
     return new THREE.Vector3(x, height, z);
   }
