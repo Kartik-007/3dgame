@@ -335,6 +335,13 @@ export class InputManager {
   }
 
   /**
+   * Set shooting state programmatically (for UI controls)
+   */
+  setIsShooting(shooting: boolean): void {
+    this.isShooting = shooting;
+  }
+  
+  /**
    * Reset input state
    */
   reset(): void {

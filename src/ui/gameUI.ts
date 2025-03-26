@@ -54,6 +54,9 @@ export class GameUI {
     hudContainer.className = 'hud-container';
     this.container.appendChild(hudContainer);
     
+    // Create mobile orientation warning
+    this.createOrientationWarning();
+    
     // Create score display
     this.scoreElement = document.createElement('div');
     this.scoreElement.className = 'score';
@@ -86,6 +89,9 @@ export class GameUI {
     this.crosshairElement = document.createElement('div');
     this.crosshairElement.className = 'crosshair';
     this.container.appendChild(this.crosshairElement);
+    
+    // Create mobile touch controls
+    this.createTouchControls();
     
     // Create settings button (outside of HUD to ensure it's always interactive)
     this.settingsButtonElement = document.createElement('div');
@@ -193,8 +199,16 @@ export class GameUI {
     controlsTitle.textContent = 'Controls:';
     instructionsList.appendChild(controlsTitle);
     
-    const controls = [
-      'WASD - Move around',
+    // Detect if the device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Different control instructions based on device type
+    const controls = isMobile ? [
+      'Drag finger - Aim camera',
+      'Touch fire button - Shoot (bottom left)',
+      'Settings gear - Adjust sensitivity',
+      'Tap screen when paused - Resume game'
+    ] : [
       'Mouse - Aim camera',
       'Left-click - Shoot',
       'ESC - Pause game',
@@ -294,6 +308,66 @@ export class GameUI {
     this.radarElement = radarBackground;
     this.radarPlayerArrow = playerArrow;
     this.radarDroneElements = [];
+  }
+  
+  /**
+   * Create touch controls for mobile devices
+   */
+  private createTouchControls(): void {
+    // Detect if the device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Create touch controls container
+    const touchControls = document.createElement('div');
+    touchControls.className = 'touch-controls';
+    this.container.appendChild(touchControls);
+    
+    // Only display on mobile devices
+    touchControls.style.display = isMobile ? 'flex' : 'none';
+    
+    // Create fire button for left side only
+    const fireButtonLeft = document.createElement('div');
+    fireButtonLeft.className = 'mobile-fire-button left';
+    touchControls.appendChild(fireButtonLeft);
+    
+    // Add event listeners for the fire button
+    fireButtonLeft.addEventListener('touchstart', (event) => {
+      event.preventDefault(); // Prevent default behavior
+      // If we have an input manager, trigger shooting
+      if (this.inputManager) {
+        this.inputManager.setIsShooting(true);
+      }
+    });
+    
+    fireButtonLeft.addEventListener('touchend', (event) => {
+      event.preventDefault(); // Prevent default behavior
+      // If we have an input manager, stop shooting
+      if (this.inputManager) {
+        this.inputManager.setIsShooting(false);
+      }
+    });
+  }
+  
+  /**
+   * Create orientation warning for mobile devices
+   */
+  private createOrientationWarning(): void {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      const warning = document.createElement('div');
+      warning.className = 'orientation-warning';
+      
+      // Create rotate icon
+      warning.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="white">
+          <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.36zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+        </svg>
+        <p>For the best experience, please rotate your device to landscape mode.</p>
+      `;
+      
+      this.container.appendChild(warning);
+    }
   }
   
   /**

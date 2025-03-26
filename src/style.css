@@ -371,6 +371,134 @@ canvas {
     width: 250px;
     padding: 15px;
   }
+  
+  /* Mobile touch controls */
+  .touch-controls {
+    display: flex;
+    pointer-events: auto;
+  }
+  
+  .mobile-fire-button {
+    opacity: 0.7;
+  }
+  
+  .instructions-container {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/* Hide touch controls on desktop */
+.touch-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 120px;
+  display: none;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.mobile-fire-button {
+  width: 80px;
+  height: 80px;
+  background-color: rgba(255, 82, 82, 0.4);
+  border: 2px solid rgba(255, 82, 82, 0.7);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+  touch-action: manipulation;
+  position: absolute;
+  bottom: 20px;
+}
+
+.mobile-fire-button::after {
+  content: '🔥';
+  font-size: 30px;
+}
+
+.mobile-fire-button.right {
+  right: 20px;
+}
+
+.mobile-fire-button.left {
+  left: 20px;
+}
+
+.mobile-fire-button:active {
+  background-color: rgba(255, 82, 82, 0.7);
+  transform: scale(0.95);
+}
+
+/* Make game over and menu buttons bigger on mobile for easier tapping */
+@media (max-width: 768px) {
+  .menu-button {
+    min-height: 50px;
+    min-width: 140px;
+  }
+  
+  /* Add more space around touchable elements */
+  .settings-button {
+    padding: 8px;
+    width: 45px;
+    height: 45px;
+  }
+  
+  /* Ensure touch targets are at least 44px x 44px (Apple's recommendation) */
+  .settings-close-btn {
+    padding: 12px 20px;
+    margin-top: 10px;
+  }
+}
+
+/* Landscape orientation optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .radar-container {
+    width: 90px;
+    height: 90px;
+    top: 10px;
+    right: 10px;
+  }
+  
+  .health-bar {
+    width: 120px;
+  }
+  
+  .mobile-fire-button {
+    width: 60px;
+    height: 60px;
+    bottom: 10px;
+  }
+  
+  .mobile-fire-button.right {
+    right: 10px;
+  }
+  
+  .mobile-fire-button.left {
+    left: 10px;
+  }
+  
+  .mobile-fire-button::after {
+    font-size: 24px;
+  }
+  
+  /* Adjust HUD for landscape */
+  .hud-container {
+    padding: 10px;
+  }
+  
+  .score, .wave {
+    font-size: 16px;
+    margin-bottom: 5px;
+  }
+  
+  .touch-controls {
+    height: 80px;
+  }
 }
 
 /* Radar/Minimap */
@@ -524,4 +652,50 @@ canvas {
 .instructions-list p {
   margin-top: 5px;
   line-height: 1.4;
+}
+
+/* Add orientation warning for mobile */
+.orientation-warning {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+.orientation-warning svg {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 20px;
+  animation: rotate 2s infinite ease;
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg); }
+  50% { transform: rotate(90deg); }
+  75% { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.orientation-warning p {
+  font-size: 18px;
+  max-width: 80%;
+  margin: 10px auto;
+}
+
+/* Only show in portrait mode on mobile devices */
+@media (max-width: 768px) and (orientation: portrait) {
+  .orientation-warning {
+    display: flex;
+  }
 }

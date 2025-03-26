@@ -31,6 +31,9 @@ export class Game {
   private isInitialized: boolean;
   
   constructor(container: HTMLElement) {
+    // Detect if this is a mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
     // Create scene
     this.scene = new THREE.Scene();
     
@@ -44,11 +47,15 @@ export class Game {
     this.camera.position.copy(Config.CAMERA_INITIAL_POSITION);
     this.camera.lookAt(Config.CAMERA_LOOK_AT);
     
-    // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Create renderer with optimizations for mobile
+    this.renderer = new THREE.WebGLRenderer({ 
+      antialias: !isMobile, // Disable antialiasing on mobile for better performance
+      powerPreference: "high-performance" 
+    });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setClearColor(Config.RENDERER_CLEAR_COLOR);
-    this.renderer.shadowMap.enabled = Config.RENDERER_SHADOW_ENABLED;
+    // Only enable shadows on desktop for performance
+    this.renderer.shadowMap.enabled = !isMobile && Config.RENDERER_SHADOW_ENABLED;
     container.appendChild(this.renderer.domElement);
     
     // Create game state
@@ -59,6 +66,12 @@ export class Game {
     
     // Create player
     this.player = new Player(this.camera);
+    
+    // Adjust sensitivity for mobile if needed
+    if (isMobile) {
+      // Use higher sensitivity for mobile devices for better control
+      this.inputManager.setSensitivity(Config.PLAYER_MOUSE_SENSITIVITY * 2.0); // Increased sensitivity for mobile
+    }
     
     // Create player base
     this.playerBase = new PlayerBase();
@@ -165,6 +178,9 @@ export class Game {
    * Start a new game
    */
   startGame(): void {
+    // Detect if this is a mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
     // Reset game state
     this.gameState.startGame(Config.BASE_HEALTH);
     
@@ -183,9 +199,10 @@ export class Game {
     // Disabled audio as requested
     // this.audioManager.playMusic('music_main');
     
-    // Request pointer lock to fix initial mouse sensitivity issue
-    // But only do this if we're not currently interacting with the settings menu
-    if (document.pointerLockElement !== this.renderer.domElement && 
+    // Request pointer lock to fix initial mouse sensitivity issue, but only on desktop
+    // Only do this if we're not currently interacting with the settings menu
+    if (!isMobile && 
+        document.pointerLockElement !== this.renderer.domElement && 
         !document.querySelector('.settings-menu')?.matches(':hover')) {
       // Small delay to ensure UI interactions are complete
       setTimeout(() => {

@@ -6,86 +6,23 @@ import { Game } from './game'
  * Bootstraps the game and handles any initial setup
  */
 
-// Competition badge code
+// Get reference to game container
+const gameContainer = document.getElementById('game-container') as HTMLElement
+
+// Remove the loading screen if it exists
+const loadingScreen = document.getElementById('loading-screen')
+if (loadingScreen && loadingScreen.parentNode) {
+  loadingScreen.parentNode.removeChild(loadingScreen)
+}
+
+// Competition badge code - using the exact required format
 const competitionBadge = document.createElement('div')
 competitionBadge.innerHTML = `
-  <div style="position: fixed; bottom: 10px; right: 10px; z-index: 999; background-color: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px; font-family: sans-serif; font-size: 12px; color: white;">
-    Vibe Jam 2025 Entry
-  </div>
+  <a target="_blank" href="https://jam.pieter.com" style="font-family: 'system-ui', sans-serif; position: fixed; bottom: -1px; right: -1px; padding: 7px; font-size: 14px; font-weight: bold; background: #fff; color: #000; text-decoration: none; z-index: 10; border-top-left-radius: 12px; z-index: 10000; border: 1px solid #fff;">🕹️ Vibe Jam 2025</a>
 `
 document.body.appendChild(competitionBadge)
 
-// Get references to existing elements
-const gameContainer = document.getElementById('game-container') as HTMLElement
-const loadingScreen = document.getElementById('loading-screen') as HTMLElement
-const errorMessage = document.getElementById('error-message') as HTMLElement
-
-// Add a loading bar to the existing loading screen
-const loadingBarContainer = document.createElement('div')
-loadingBarContainer.className = 'loading-bar-container'
-loadingBarContainer.style.cssText = `
-  width: 300px;
-  height: 20px;
-  background-color: #111111;
-  border-radius: 10px;
-  margin: 20px 0;
-  overflow: hidden;
-`
-
-const loadingBar = document.createElement('div')
-loadingBar.className = 'loading-bar'
-loadingBar.style.cssText = `
-  height: 100%;
-  width: 0%;
-  background-color: #4caf50;
-  transition: width 0.2s ease;
-`
-
-loadingBarContainer.appendChild(loadingBar)
-loadingScreen.appendChild(loadingBarContainer)
-
-// Add a gameplay tip
-const loadingTip = document.createElement('p')
-loadingTip.className = 'loading-tip'
-loadingTip.textContent = 'Tip: Use mouse to aim and left click to shoot. Defend your base from drones!'
-loadingTip.style.cssText = `
-  font-size: 14px;
-  color: #ffffff;
-  opacity: 0.8;
-  margin-top: 20px;
-  max-width: 400px;
-  text-align: center;
-`
-loadingScreen.appendChild(loadingTip)
-
-// Function to update loading progress
-function updateLoadingProgress(progress: number): void {
-  if (loadingBar) {
-    loadingBar.style.width = `${progress}%`
-  }
-}
-
-// Simulated loading progress (in a real game, this would be tied to asset loading)
-let progress = 0
-const loadingInterval = setInterval(() => {
-  progress += 5
-  updateLoadingProgress(progress)
-  
-  if (progress >= 100) {
-    clearInterval(loadingInterval)
-    
-    // Wait a bit for visual polish, then initialize the game
-    setTimeout(() => {
-      loadingScreen.style.opacity = '0'
-      setTimeout(() => {
-        loadingScreen.style.display = 'none'
-        initializeGame()
-      }, 500) // Wait for fade-out animation
-    }, 500)
-  }
-}, 100)
-
-// Initialize the game once loading is complete
+// Initialize the game immediately
 function initializeGame(): void {
   try {
     // Create the game instance
@@ -94,7 +31,7 @@ function initializeGame(): void {
     // Start the game
     game.start()
     
-    // Setup restart handler if needed
+    // Setup restart handler
     window.addEventListener('beforeunload', () => {
       game.dispose()
     })
@@ -110,7 +47,7 @@ function initializeGame(): void {
     
     console.log('Game initialized and started')
   } catch (error) {
-    // Show error screen
+    // Show error directly in the game container
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
     showErrorScreen(errorMsg)
     console.error('Failed to initialize game:', error)
@@ -119,25 +56,53 @@ function initializeGame(): void {
 
 // Show error screen in case of initialization failure
 function showErrorScreen(message: string): void {
-  // Display error in the existing error message element
-  if (errorMessage) {
-    errorMessage.textContent = message
-    loadingScreen.style.display = 'flex'
-    
-    // Show a refresh button
-    const refreshButton = document.createElement('button')
-    refreshButton.textContent = 'Refresh'
-    refreshButton.style.cssText = `
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      margin-top: 20px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 5px;
-    `
-    refreshButton.onclick = () => window.location.reload()
-    loadingScreen.appendChild(refreshButton)
-  }
+  // Create an error element
+  const errorElement = document.createElement('div')
+  errorElement.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    color: #ff5555;
+    text-align: center;
+    padding: 20px;
+  `
+  
+  const errorTitle = document.createElement('h2')
+  errorTitle.textContent = 'Error Loading Game'
+  errorTitle.style.marginBottom = '20px'
+  
+  const errorMessage = document.createElement('p')
+  errorMessage.textContent = message
+  
+  // Show a refresh button
+  const refreshButton = document.createElement('button')
+  refreshButton.textContent = 'Refresh'
+  refreshButton.style.cssText = `
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin-top: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+  `
+  refreshButton.onclick = () => window.location.reload()
+  
+  errorElement.appendChild(errorTitle)
+  errorElement.appendChild(errorMessage)
+  errorElement.appendChild(refreshButton)
+  
+  document.body.appendChild(errorElement)
 }
+
+// Start the game immediately
+initializeGame()
